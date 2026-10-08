@@ -17,6 +17,7 @@ assignees: ''
 
 **Environment**
 - Rack version:
+- Build ID (from the downloaded build's manifest.json):
 - macOS version:
 - Apple silicon or Intel:
 - Output device:

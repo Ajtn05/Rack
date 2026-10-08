@@ -1,0 +1,46 @@
+name: Automated verification
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Source branch, commit, or tag; empty uses the caller's revision
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Verify ${{ matrix.architecture }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: arm64
+            runner: macos-15
+          - architecture: x86_64
+            runner: macos-15-intel
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - name: Run automated verification
+        env:
+          RACK_EXPECTED_ARCHITECTURE: ${{ matrix.architecture }}
+        run: |
+          python3 -c 'import os, platform; assert platform.machine() == os.environ["RACK_EXPECTED_ARCHITECTURE"]'
+          python3 Scripts/release.py verify --output dist/verification/${{ matrix.architecture }}
+      - name: Retain reports, logs, and theme screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: verification-${{ matrix.architecture }}
+          path: dist/verification/${{ matrix.architecture }}/
+          if-no-files-found: warn
+          retention-days: 14

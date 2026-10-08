@@ -14,6 +14,8 @@
 - Thirteen themes, rearrangeable panels, menu bar controls, login item,
   and global keyboard shortcuts.
 - Universal macOS archive packaging, checksums, and continuous integration.
+- Organized verification, immutable test builds and release candidates,
+  retained logs/screenshots, and promotion of the exact tested archive.
 
 Requires macOS 14.4 or later. The ad-hoc signed preview is not notarized.
 See [release notes](docs/releases/0.0.1.md) for installation and validation scope.

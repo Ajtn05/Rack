@@ -1,96 +1,125 @@
 # Releasing Rack
 
-The current version is **0.0.1**, build **1**, in `Resources/Info.plist`.
-The prepared release is a preview. No GitHub repository or release has been
-created by this preparation work.
+The repeatable process is in [BUILD_SYSTEM.md](BUILD_SYSTEM.md). Use
+`Scripts/release.py` for verification, candidate preparation, and distribution.
+The original package in `dist/0.0.1/` is retained as a legacy preview; new
+builds use separate directories and never overwrite it.
 
-## Prepare the files
+## Prepare a version
 
-Run the verification commands in [DEVELOPMENT.md](DEVELOPMENT.md), then:
-
-```sh
-sh Scripts/package-release.sh
-```
-
-The script builds an optimized universal app, applies an ad-hoc signature,
-verifies the signature and architectures, checks that the debugger entitlement
-is absent, tests the ZIP, and writes:
-
-```text
-dist/0.0.1/
-  Rack-0.0.1-macOS-universal-preview.zip
-  SHA256SUMS
-  release-info.json
-  release-notes.md
-```
-
-`release-info.json` records the version, architectures, signing status,
-notarization status, source commit, uncommitted-change flag, build time, and
-archive checksum. Check the archive with:
+`Resources/Info.plist` owns the app version and numeric build number. Increment
+the build number for each versioned release; test runs also receive a separate
+unique build ID. For example, when moving from 0.0.1/build 1:
 
 ```sh
-cd dist/0.0.1
-shasum -a 256 -c SHA256SUMS
+python3 Scripts/release.py version 0.0.2 --build 2
 ```
 
-Ad-hoc signed previews are not notarized. Keep that fact in the release notes
-and publish them as prereleases. The local development signing certificate
-is never selected automatically by the package script.
+Add `docs/releases/0.0.2.md` and update `CHANGELOG.md` and the README for the
+actual version. Commit the source and release notes. A candidate requires a
+clean, committed tree; work in progress belongs in `test-build`.
 
-## Developer ID signing and notarization
+## Prepare a preview candidate
 
-For a notarized build, install your **Developer ID Application** certificate
-and configure a `notarytool` keychain profile. Supply both explicitly:
+```sh
+python3 Scripts/release.py candidate --preview
+```
+
+The command runs automated verification, builds a universal optimized app,
+and writes a new `dist/releases/VERSION/BUILD-ID/` directory. It contains the
+app ZIP, checksum, source/build metadata, manifest, test reports, command logs,
+theme previews, and a manual-check template.
+
+Preview candidates are ad-hoc signed, not notarized, and distributed as
+GitHub prereleases. Keep that limitation in the product page and release notes.
+The command refuses to reuse an existing output directory. Failed builds stay
+available for diagnosis and do not replace the last successful build pointer.
+
+## Prepare a stable candidate
+
+Download verification reports for both architectures from the same GitHub
+run, or combine reports produced by `release.py verify` on Apple silicon and
+Intel from the exact same clean source. Put each complete report directory
+under a common parent, then run on a signing-equipped Mac:
 
 ```sh
 export RACK_SIGN_IDENTITY='Developer ID Application: YOUR NAME (TEAM ID)'
 export RACK_NOTARY_PROFILE='YOUR KEYCHAIN PROFILE'
-sh Scripts/package-release.sh --notarize
+python3 Scripts/release.py candidate --verification dist/verification-input
 ```
 
-The script waits for acceptance, staples and validates the ticket, and runs
-Gatekeeper assessment before producing `Rack-0.0.1-macOS-universal.zip`.
-Signing credentials belong in your keychain, outside this repository.
-Adjust the README and release notes to reflect successful notarization
-before publishing that variant.
+The command verifies both reports against the source and their retained
+files. It builds, signs with a timestamp, waits for notarization acceptance,
+staples and validates the ticket, and runs Gatekeeper assessment. Stable
+candidates and releases require notarization and both architecture reports.
+Credentials stay in the machine's keychain. Ordinary CI uses no signing secrets.
 
-## Publish when the repository exists
+Adjust the README and release notes for stable distribution before committing
+and preparing this candidate; the archive's notes are part of its checked evidence.
 
-1. Create the GitHub repository and add its actual URL as `origin`.
-2. Choose the repository's license; this preparation does not select one.
-3. Commit the release source, run CI, and do a live launch/listening check.
-   Check permission prompts, output switching, microphone monitoring,
-   bypass, menu bar controls, and quit behavior on real devices.
-4. Change the changelog entry from prepared to the publication date.
-5. Commit that update, rebuild the package from the committed source,
-   and confirm `sourceHasChanges` is `false` in `release-info.json`.
-6. Tag the exact tested commit and push the branch and tag:
+## Test the candidate and record results
+
+Install from the candidate's ZIP and follow
+[MANUAL_SMOKE.md](testing/MANUAL_SMOKE.md). Copy its generated template,
+fill in real observations, then import the record:
 
 ```sh
-git tag -a v0.0.1 -m 'Rack 0.0.1 preview'
+python3 Scripts/release.py record-smoke CANDIDATE-DIRECTORY --file completed-smoke.json
+```
+
+Do not mark untested checks as passed. Required checks must pass. A missing
+microphone can be documented as an optional skipped check with a reason.
+The record is bound to the archive checksum and cannot be reused for a rebuilt ZIP.
+If a problem requires a fix, commit the fix and prepare a new candidate.
+
+## Publish the tested artifact
+
+Configure the repository's actual URL as `origin` once. Choose its license,
+push the source and workflow files, and let GitHub CI run.
+
+Read the candidate's source commit in `manifest.json`, then tag that exact
+commit and push the tag. For example:
+
+```sh
+git tag -a v0.0.1 ACTUAL_CANDIDATE_COMMIT -m 'Rack 0.0.1 preview'
 git push origin main
 git push origin v0.0.1
+python3 Scripts/release.py draft-release CANDIDATE-DIRECTORY
 ```
 
-Create a draft GitHub prerelease from the repository directory:
+Use the actual version and commit; do not run the placeholder literally.
+`draft-release` verifies the candidate files, automated evidence, manual
+record, and local tag, then requires the remote tag to exist. It uploads
+that candidate's exact ZIP, checksums, metadata, manifest, manual record,
+and a companion archive containing all retained evidence. It never rebuilds
+or replaces the app. Preview releases are explicitly marked as prereleases.
+
+Review the GitHub draft, then publish it. Add the actual release/download
+link to the product README. Keep the candidate directory as the local record.
+
+## Prepare candidates through GitHub
+
+Use **Actions → Prepare preview release candidate → Run workflow** and enter
+an existing `vVERSION` tag. The workflow verifies that source on Apple silicon
+and Intel, then uploads an immutable candidate folder. Download it, extract
+it with its directory structure intact, perform the manual checks, record
+them using the local command, and create the draft release from that folder.
+
+The release workflow uses read-only repository access and prepares artifacts;
+it does not publish automatically. Main pushes produce testing artifacts
+through **Tests and test builds**; pull requests run the same automated gates.
+Candidate artifacts expire after 90 days, so retain a local copy before expiry.
+
+## Verify and retain files
+
+The checksum file is inside a candidate's `package/` directory:
 
 ```sh
-gh release create v0.0.1 \
-  dist/0.0.1/Rack-0.0.1-macOS-universal-preview.zip \
-  dist/0.0.1/SHA256SUMS \
-  dist/0.0.1/release-info.json \
-  --verify-tag --draft --prerelease \
-  --title 'Rack 0.0.1 — First Preview' \
-  --notes-file dist/0.0.1/release-notes.md
+cd CANDIDATE-DIRECTORY/package
+shasum -a 256 -c SHA256SUMS
 ```
 
-Review the draft's files and installation instructions, then publish it.
-Update the README's prepared-release paragraph with a direct download link
-after the release is live. Build archives stay out of source control.
-
-## Subsequent versions
-
-Update `CFBundleShortVersionString` and increment `CFBundleVersion` in
-`Resources/Info.plist`. Add `docs/releases/VERSION.md`, update `CHANGELOG.md`
-and the README, and repeat the verification and packaging steps. The package
-script reads the version from the bundle metadata.
+Use `python3 Scripts/release.py list` to inspect local history and
+`python3 Scripts/release.py clean --apply` for routine cleanup. Cleanup keeps
+release candidates, the latest successful test build, and fresh app bundles.
+Do not delete `dist/` wholesale or upload an unverified low-level package as a release.

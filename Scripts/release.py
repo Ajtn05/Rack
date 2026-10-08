@@ -14,6 +14,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 
@@ -237,6 +238,10 @@ def prepare_build(args, root=ROOT):
     is_candidate = args.command == "candidate"
     if is_candidate and (not source["commit"] or source["hasChanges"]):
         raise BuildError("Release candidates require a committed, clean source tree. Use test-build for work in progress.")
+    if is_candidate and args.tag:
+        expected = f"v{info['version']}"
+        if args.tag != expected or git("rev-parse", "--verify", f"{expected}^{{commit}}", root=root).decode().strip() != source["commit"]:
+            raise BuildError("Candidate tag must match the bundle version and current source commit.")
     preview = not is_candidate or args.preview
     if not preview:
         if not os.environ.get("RACK_SIGN_IDENTITY", "").startswith("Developer ID Application:") or not os.environ.get("RACK_NOTARY_PROFILE"):
@@ -252,6 +257,8 @@ def prepare_build(args, root=ROOT):
         reports = collect_verification(directory, source, args.verification, root)
         for path in reports:
             validate_verification(path, source)
+        if not preview and {read_json(path)["platform"]["architecture"] for path in reports} != {"arm64", "x86_64"}:
+            raise BuildError("Stable candidates require verification reports from both Apple silicon and Intel.")
         env = os.environ.copy()
         env["RACK_PACKAGE_OUTPUT"] = str(directory / "package")
         if not is_candidate:
@@ -272,6 +279,10 @@ def prepare_build(args, root=ROOT):
         manifest["verification"] = [{"path": str(path.relative_to(directory)), "sha256": sha256(path)} for path in reports]
         manifest["package"] = {"path": str(archive.relative_to(directory)), "sha256": package["sha256"],
                                "notarized": package["notarized"], "signing": package["signing"]}
+        manifest["packageFiles"] = {
+            str(path.relative_to(directory)): sha256(path)
+            for path in sorted((directory / "package").iterdir()) if path.is_file()
+        }
         template = read_json(root / "docs/testing/manual-smoke-template.json")
         template["archiveSha256"] = package["sha256"]
         (directory / "manual-smoke-template.json").write_text(json.dumps(template, indent=2) + "\n")
@@ -330,6 +341,26 @@ def validate_candidate(directory):
     archive = child_path(directory, manifest["package"]["path"])
     if sha256(archive) != manifest["package"]["sha256"]:
         raise BuildError("Candidate archive changed after testing.")
+    files = manifest.get("packageFiles", {})
+    required = {str(archive.relative_to(directory)), "package/SHA256SUMS",
+                "package/release-info.json", "package/release-notes.md"}
+    if not required.issubset(files):
+        raise BuildError("Candidate package evidence is incomplete.")
+    for relative, expected in files.items():
+        file = child_path(directory, relative)
+        if not file.is_file() or sha256(file) != expected:
+            raise BuildError(f"Candidate package file changed: {file}.")
+    package = read_json(directory / "package/release-info.json")
+    if (package.get("sha256") != manifest["package"]["sha256"]
+            or package.get("archive") != archive.name
+            or package.get("version") != manifest["version"]
+            or package.get("build") != manifest["build"]
+            or package.get("sourceCommit") != source["commit"]
+            or package.get("sourceHasChanges") is not False
+            or package.get("notarized") != manifest["package"]["notarized"]):
+        raise BuildError("Package metadata does not match the tested candidate.")
+    if (directory / "package/SHA256SUMS").read_text().strip() != f"{package['sha256']}  {archive.name}":
+        raise BuildError("Candidate checksum file changed.")
     reports = []
     for item in manifest.get("verification", []):
         path = child_path(directory, item["path"])
@@ -355,6 +386,8 @@ def draft_release(directory, root=ROOT):
     tagged_commit = git("rev-parse", "--verify", f"{tag}^{{commit}}", root=root).decode().strip()
     if tagged_commit != manifest["source"]["commit"]:
         raise BuildError("Release tag points to a different commit than the tested candidate.")
+    if remote_tag_commit(tag, root) != manifest["source"]["commit"]:
+        raise BuildError("GitHub's release tag points to a different commit than the tested candidate.")
     directory = Path(directory).resolve()
     command = ["gh", "release", "create", tag, str(archive),
                str(directory / "package/SHA256SUMS"), str(directory / "package/release-info.json"),
@@ -363,7 +396,21 @@ def draft_release(directory, root=ROOT):
                "--notes-file", str(directory / "package/release-notes.md")]
     if manifest["channel"] == "preview":
         command.append("--prerelease")
-    subprocess.run(command, cwd=root, check=True)
+    # Export the full evidence as one companion archive while retaining the
+    # candidate's original application ZIP unchanged.
+    with tempfile.TemporaryDirectory(prefix="rack-release-") as temporary:
+        evidence = Path(shutil.make_archive(str(Path(temporary) / "Rack-build-evidence"), "zip", directory))
+        command.insert(4, str(evidence))
+        subprocess.run(command, cwd=root, check=True)
+
+
+def remote_tag_commit(tag, root=ROOT):
+    repository = subprocess.check_output(
+        ["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
+        cwd=root, text=True).strip()
+    return subprocess.check_output(
+        ["gh", "api", f"repos/{repository}/commits/{tag}", "--jq", ".sha"],
+        cwd=root, text=True).strip()
 
 
 def set_version(version, number, root=ROOT):
@@ -422,6 +469,7 @@ def main():
         command.add_argument("--verification", type=Path, help="Reuse retained verification for the exact same source")
         if name == "candidate":
             command.add_argument("--preview", action="store_true", help="Prepare an ad-hoc signed prerelease candidate")
+            command.add_argument("--tag", help="Require an existing version tag to identify this candidate's source")
     record = commands.add_parser("record-smoke", help="Record completed manual checks for an exact candidate")
     record.add_argument("directory", type=Path)
     record.add_argument("--file", type=Path, required=True)

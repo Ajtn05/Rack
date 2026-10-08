@@ -32,6 +32,17 @@ signing unless you explicitly supply a signing identity.
 
 ## Verify changes
 
+Use the organized runner when declaring a build verified:
+
+```sh
+python3 Scripts/release.py verify
+python3 Scripts/release.py test-build
+```
+
+It retains command logs, structured results, and theme previews with each
+run. The full process is in [BUILD_SYSTEM.md](BUILD_SYSTEM.md).
+For targeted development checks, the underlying commands remain available:
+
 ```sh
 sh Scripts/check-boundaries.sh
 sh Scripts/check-test-registration.sh
@@ -44,24 +55,27 @@ than `swift test`. `--headless` skips AppKit appearance checks and SwiftUI
 screenshot rendering while keeping the audio and model suites.
 Release tests need `-enable-testing` because they import internal module APIs.
 
-The full suite renders every theme, including reduced-transparency variants,
-to `Tests/RackTests/ThemeScreenshots/`. Those images are intentional visual
-review artifacts. README images are selected copies under `docs/images/`;
+The full suite renders every theme, including reduced-transparency variants.
+The organized runner stores them in the build's validation directory. A
+direct `swift run RackTests` updates `Tests/RackTests/ThemeScreenshots/`;
+use that when refreshing the intentional visual review assets. README images
+under `docs/images/` show the current app panels with sample audio data;
 refresh them when appearance changes.
 
-GitHub CI runs boundary checks, the full debug suite, optimized headless
-tests, and universal archive packaging on macOS. It does not launch the live
-audio engine or exercise physical devices.
+GitHub CI runs the same verification on Apple silicon and Intel, then packages
+the exact verified source for testing. It does not launch the live audio
+engine or exercise physical devices.
 
 ## Clean generated files
 
 ```sh
-swift package clean
+python3 Scripts/release.py clean
+python3 Scripts/release.py clean --apply
 ```
 
-For a complete reset, remove `.build/` and `dist/`. Both directories are
-generated and ignored by Git. Preserve release archives elsewhere if you
-need them before deleting `dist/`.
+This previews or applies cache/test-build retention while preserving app
+bundles, the last successful test build, and all release candidates. `dist/`
+is the ignored local build history; do not delete it wholesale during cleanup.
 
 ## Read before changing code
 

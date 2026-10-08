@@ -142,7 +142,8 @@ public struct NeedleMeter: View {
 
     /// Ticks and legends, printed on the card.
     private func scale(in size: CGSize, pivot: CGPoint, radius: CGFloat) -> some View {
-        ForEach(Array(marks.enumerated()), id: \.offset) { _, mark in
+        ForEach(marks.indices, id: \.self) { index in
+            let mark = marks[index]
             let angle = angleFor(mark.position)
             let isWarning = mark.position >= warningThreshold
             let ink =

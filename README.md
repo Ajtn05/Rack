@@ -11,9 +11,9 @@ Shape everything you play—from music and movies to calls and games—in one pl
 
 [Get started](#get-rack) · [Features](#your-own-hi-fi-stack) · [Build from source](#build-from-source)
 
-<img src="docs/images/technics.png" alt="Rack's Technics theme: amplifier controls, a spectrum analyzer, and a ten-band equalizer" width="720">
+<img src="docs/images/technics.png" alt="Rack's Technics theme: six amplifier controls, a spectrum and frequency-response overlay, stereo meters, and a ten-band equalizer" width="720">
 
-*Theme preview rendered with Rack's controls and sample audio data.*
+*Previews rendered from the current app panels with sample audio data.*
 
 </div>
 
@@ -38,6 +38,10 @@ Rack stays available in the menu bar when you close its window. Start or stop
 the engine, bypass processing, reopen the rack, or enable launch at login
 without digging through settings.
 
+<img src="docs/images/effects.png" alt="Rack's tiled effects panels: saturation, compressor with gain-reduction meter, sound field processor with reverb, delay, width and crossfeed, and limiter" width="720">
+
+*Saturation, dynamics, and sound field controls in the Technics theme.*
+
 ## Pick your look
 
 Thirteen themes range from dark hi-fi equipment and brushed silver to
@@ -46,13 +50,13 @@ appearance. Every theme uses the same controls.
 
 <table>
   <tr>
-    <td align="center"><img src="docs/images/silver-face.png" alt="Rack controls in the Silver Face theme" width="350"><br><b>Silver Face</b></td>
-    <td align="center"><img src="docs/images/bakelite.png" alt="Rack controls in the Bakelite theme" width="350"><br><b>Bakelite</b></td>
+    <td align="center"><img src="docs/images/silver-face.png" alt="Amplifier, analyzer, and equalizer panels in the Silver Face theme" width="350"><br><b>Silver Face</b></td>
+    <td align="center"><img src="docs/images/bakelite.png" alt="Amplifier, analyzer, and equalizer panels in the Bakelite theme" width="350"><br><b>Bakelite</b></td>
   </tr>
 </table>
 
-*These are component previews. The app also includes dynamics, sound field,
-application mixing, input, output, and preset panels.*
+*The same amplifier, analyzer, and equalizer panels in two more themes.
+The app also includes application mixing, input, output, and preset panels.*
 
 ## Get Rack
 
@@ -112,6 +116,15 @@ sh Scripts/build-app.sh --release --universal --ad-hoc
 Rack uses Swift Package Manager and has no third-party package dependencies.
 For development builds, tests, and local signing, see the
 [developer guide](docs/DEVELOPMENT.md).
+
+To prepare a verified testing ZIP with logs and theme previews:
+
+```sh
+python3 Scripts/release.py test-build
+```
+
+Each build is retained separately. The [build and distribution guide](docs/BUILD_SYSTEM.md)
+covers automated testing, release candidates, and publishing the exact tested app.
 
 ## Inside Rack
 
