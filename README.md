@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/images/app-icon.png" alt="Rack app icon" width="128" height="128">
+
 # Rack
 
 **Your Mac. Your sound.**
