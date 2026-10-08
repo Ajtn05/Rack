@@ -23,8 +23,10 @@ jobs:
         include:
           - architecture: arm64
             runner: macos-15
+            theme_screenshots: true
           - architecture: x86_64
             runner: macos-15-intel
+            theme_screenshots: false
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -33,9 +35,14 @@ jobs:
       - name: Run automated verification
         env:
           RACK_EXPECTED_ARCHITECTURE: ${{ matrix.architecture }}
+          RACK_RENDER_THEME_SCREENSHOTS: ${{ matrix.theme_screenshots }}
         run: |
           python3 -c 'import os, platform; assert platform.machine() == os.environ["RACK_EXPECTED_ARCHITECTURE"]'
-          python3 Scripts/release.py verify --output dist/verification/${{ matrix.architecture }}
+          verification_args=()
+          if [ "$RACK_RENDER_THEME_SCREENSHOTS" = "false" ]; then
+            verification_args+=(--skip-theme-screenshots)
+          fi
+          python3 Scripts/release.py verify --output dist/verification/${{ matrix.architecture }} "${verification_args[@]}"
       - name: Retain reports, logs, and theme screenshots
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

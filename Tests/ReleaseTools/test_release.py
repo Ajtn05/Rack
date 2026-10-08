@@ -1,10 +1,13 @@
 """Regression coverage for build identity, failed gates, and artifact promotion."""
 import argparse
+import contextlib
 import datetime as dt
 import importlib.util
+import io
 import json
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -98,6 +101,45 @@ class ReleaseTests(unittest.TestCase):
         report = release.read_json(self.root / "failed/report.json")
         self.assertEqual(report["status"], "failed")
         self.assertTrue((self.root / "failed/summary.md").exists())
+
+    def test_failed_commands_print_diagnostics_and_retain_full_logs(self):
+        cases = [
+            ("compiler", "import sys; print('fixture compiler error', file=sys.stderr); sys.exit(2)", 2),
+            ("debug-tests", "print('fixture missing test tally')", 0),
+        ]
+        for name, script, exit_code in cases:
+            with self.subTest(name=name):
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    step = release.command_step(name, [sys.executable, "-c", script], self.root)
+                self.assertEqual(step["status"], "failed")
+                self.assertEqual(step["exitCode"], exit_code)
+                diagnostic = (self.root / step["log"]).read_text().strip()
+                self.assertIn(diagnostic, output.getvalue())
+                self.assertIn(f"{name} failed", output.getvalue())
+
+    def test_screenshot_option_preserves_other_debug_and_optimized_tests(self):
+        def passed_step(name, *_args, **_kwargs):
+            return {"name": name, "status": "passed", "checks": 10, "log": name + ".log"}
+
+        for skip in (False, True):
+            with self.subTest(skip=skip):
+                with mock.patch.object(release.subprocess, "check_output", return_value="Swift fixture"), \
+                        mock.patch.object(release, "command_step", side_effect=passed_step) as runner, \
+                        mock.patch.object(release, "source_state", return_value=self.source):
+                    path = release.verification(self.root / f"screenshots-{skip}", self.source, self.root,
+                                                skip_theme_screenshots=skip)
+                commands = {call.args[0]: call.args[1] for call in runner.call_args_list}
+                debug = ["swift", "run", "RackTests"]
+                if skip:
+                    debug.append("--skip-theme-screenshots")
+                self.assertEqual(commands["debug-tests"], debug)
+                self.assertEqual(commands["optimized-tests"], [
+                    "swift", "run", "-c", "release", "-Xswiftc", "-enable-testing", "RackTests", "--headless"])
+                report = release.read_json(path)
+                self.assertEqual(report["status"], "passed")
+                self.assertEqual(report["themeScreenshots"], not skip)
+                self.assertEqual(set(commands), release.REQUIRED_STEPS)
 
     def test_source_change_during_tests_invalidates_passes(self):
         def passed_step(name, *_args, **_kwargs):

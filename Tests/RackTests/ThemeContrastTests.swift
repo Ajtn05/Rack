@@ -184,38 +184,26 @@ func runThemeContrastTests() {
         // window redrawing its meters thirty times a second is compositing a
         // cached image rather than running value noise per pixel.
         //
-        // Timed rather than asserted structurally, because "is it cached" is
-        // exactly the sort of thing that stays true in the code and stops
-        // being true in practice the moment a key stops matching.
-        var coldest = 0.0
-        var warmest = 0.0
+        // Reusing the same image proves that a matching request hits the
+        // cache. Wall-clock limits depend on runner speed and load, so they
+        // cannot establish whether an image was regenerated.
 
         for theme in ThemeRegistry.all {
             guard let request = theme.panelMaterial.textureRequest else { continue }
+            guard let image = MaterialTexture.image(for: request) else {
+                Check.isTrue(false, "\(theme.displayName): the texture is generated")
+                continue
+            }
 
-            let coldStart = ContinuousClock.now
-            _ = MaterialTexture.image(for: request)
-            let cold = Double((ContinuousClock.now - coldStart).components.attoseconds) / 1e18
-
-            let warmStart = ContinuousClock.now
-            for _ in 0..<200 { _ = MaterialTexture.image(for: request) }
-            let warm = Double((ContinuousClock.now - warmStart).components.attoseconds) / 1e18 / 200
-
-            coldest = max(coldest, cold)
-            warmest = max(warmest, warm)
+            Check.equal(image.width, MaterialTexture.tilePixels, "\(theme.displayName): texture width")
+            Check.equal(image.height, MaterialTexture.tilePixels, "\(theme.displayName): texture height")
+            for _ in 0..<200 {
+                Check.isTrue(
+                    MaterialTexture.image(for: request) === image,
+                    "\(theme.displayName): repeated requests reuse the generated texture"
+                )
+            }
         }
-
-        // A cache hit is a dictionary lookup. Even generously, it should be
-        // orders of magnitude under a 60 fps frame's 16 ms budget.
-        Check.isTrue(
-            warmest < 0.0005,
-            "a cached texture costs \(String(format: "%.6f", warmest))s per fetch"
-        )
-        Check.isTrue(
-            coldest < 0.25,
-            "generating a texture the first time costs "
-                + "\(String(format: "%.4f", coldest))s"
-        )
     }
 
     Check.suite("Theme materials — texture never moves a surface's mean") {

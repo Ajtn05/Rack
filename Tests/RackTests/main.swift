@@ -111,7 +111,13 @@ runSpectrumBallisticsTests()
 // appearance resolution or SwiftUI image rendering.
 if !CommandLine.arguments.contains("--headless") {
     runThemeContrastTests()
-    runThemeScreenshotTests()
+    // Some CI hosts cannot initialize Metal for SwiftUI ImageRenderer.
+    // Keep their contrast and CPU texture checks while omitting screenshots.
+    if CommandLine.arguments.contains("--skip-theme-screenshots") {
+        print("• Theme screenshots — skipped (--skip-theme-screenshots)")
+    } else {
+        runThemeScreenshotTests()
+    }
 }
 
 

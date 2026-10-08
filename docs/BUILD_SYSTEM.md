@@ -35,6 +35,12 @@ Every verification run checks:
 3. Full debug audio/model tests, theme contrast, and theme rendering.
 4. Optimized headless audio/model tests.
 
+`verify --skip-theme-screenshots` omits only SwiftUI screenshot rendering;
+theme contrast and texture cache checks still run. The report records this
+choice. CI uses this option on the Intel runner, where Metal initialization
+aborts rendering. Apple silicon CI renders all normal and reduced-transparency
+theme screenshots. Local verification renders screenshots by default.
+
 Packaging then checks the universal executable, code signature, audio
 entitlement, absence of the debugger entitlement, ZIP integrity, and checksum.
 Stable packaging also waits for notarization, staples the ticket, and runs
@@ -114,7 +120,8 @@ Once the repository is created and pushed:
 
 - **Tests and test builds** runs on pull requests and pushes to `main`.
   It verifies on `macos-15` (Apple silicon) and `macos-15-intel`. Both must
-  pass. Main pushes and manual runs also produce a universal testing ZIP
+  pass; theme screenshots are rendered on Apple silicon. Main pushes and
+  manual runs also produce a universal testing ZIP
   and complete evidence as a GitHub Actions artifact.
 - **Prepare preview release candidate** runs manually for an existing
   `vVERSION` tag. It verifies that tagged source on both architectures,

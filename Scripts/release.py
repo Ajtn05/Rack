@@ -139,24 +139,31 @@ def command_step(name, command, directory, env=None, root=ROOT):
             step["checks"] = int(tally.group(1))
         if not tally or step.get("checks", 0) == 0:
             step["status"] = "failed"
+    if step["status"] == "failed":
+        print(f"→ {name} failed (exit code {result.returncode}); last 120 log lines:", flush=True)
+        print("\n".join(log.read_text(errors="replace").splitlines()[-120:]), flush=True)
     return step
 
 
-def verification(directory, source, root=ROOT):
+def verification(directory, source, root=ROOT, *, skip_theme_screenshots=False):
     directory = new_directory(directory)
     report = {"schemaVersion": 1, "kind": "verification", "status": "running",
               "startedAt": utc_now(), "source": source, "steps": [],
+              "themeScreenshots": not skip_theme_screenshots,
               "platform": {"architecture": platform.machine(), "macOS": platform.mac_ver()[0]}}
     try:
         report["platform"]["swift"] = subprocess.check_output(
             ["swift", "--version"], cwd=root, text=True, stderr=subprocess.STDOUT).strip()
         env = os.environ.copy()
         env["RACK_THEME_SCREENSHOT_DIR"] = str(directory / "theme-screenshots")
+        debug_command = ["swift", "run", "RackTests"]
+        if skip_theme_screenshots:
+            debug_command.append("--skip-theme-screenshots")
         commands = [
             ("boundaries", ["sh", "Scripts/check-boundaries.sh"]),
             ("registration", ["sh", "Scripts/check-test-registration.sh"]),
             ("release-tools", [sys.executable, "-m", "unittest", "discover", "-s", "Tests/ReleaseTools", "-v"]),
-            ("debug-tests", ["swift", "run", "RackTests"]),
+            ("debug-tests", debug_command),
             ("optimized-tests", ["swift", "run", "-c", "release", "-Xswiftc", "-enable-testing", "RackTests", "--headless"]),
         ]
         for name, command in commands:
@@ -182,6 +189,7 @@ def verification(directory, source, root=ROOT):
         write_json(directory / "report.json", report)
         lines = ["# Automated verification", "", f"Result: **{report['status']}**", "",
                  f"Source: `{source['commit'] or 'uncommitted working tree'}`", "",
+                 f"Theme screenshots: {'skipped' if skip_theme_screenshots else 'enabled'}", "",
                  "| Check | Result | Checks |", "| --- | --- | --- |"]
         for step in report["steps"]:
             lines.append(f"| {step['name']} | {step['status']} | {step.get('checks', '—')} |")
@@ -464,6 +472,8 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     verify = commands.add_parser("verify", help="Run every automated gate and retain its evidence")
     verify.add_argument("--output", type=Path)
+    verify.add_argument("--skip-theme-screenshots", action="store_true",
+                        help="Keep contrast and texture checks, but omit SwiftUI rendering on hosts without usable Metal")
     for name in ("test-build", "candidate"):
         command = commands.add_parser(name, help="Prepare an immutable universal build")
         command.add_argument("--verification", type=Path, help="Reuse retained verification for the exact same source")
@@ -496,7 +506,7 @@ def main():
             if args.command == "verify":
                 source = source_state()
                 output = args.output or ROOT / "dist/verification" / build_id(source)
-                print(f"Verification report: {verification(output, source)}")
+                print(f"Verification report: {verification(output, source, skip_theme_screenshots=args.skip_theme_screenshots)}")
             elif args.command in {"test-build", "candidate"}:
                 prepare_build(args)
             elif args.command == "record-smoke":

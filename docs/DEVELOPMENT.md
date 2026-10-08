@@ -53,6 +53,10 @@ swift run -c release -Xswiftc -enable-testing RackTests --headless
 `RackTests` is a custom executable harness; use `swift run RackTests` rather
 than `swift test`. `--headless` skips AppKit appearance checks and SwiftUI
 screenshot rendering while keeping the audio and model suites.
+`--skip-theme-screenshots` skips only SwiftUI rendering and keeps contrast
+and CPU texture checks. Use `python3 Scripts/release.py verify
+--skip-theme-screenshots` on hosts where Metal cannot initialize, as Intel
+CI does. Apple silicon CI and default local verification render all themes.
 Release tests need `-enable-testing` because they import internal module APIs.
 
 The full suite renders every theme, including reduced-transparency variants.
