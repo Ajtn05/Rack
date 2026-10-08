@@ -1,0 +1,17 @@
+{
+  "archiveSha256": "COPY_FROM_THE_CANDIDATE",
+  "tester": "",
+  "testedAt": "",
+  "macOS": "",
+  "architecture": "",
+  "checks": {
+    "install_and_launch": {"result": "pending", "notes": ""},
+    "system_audio_permission": {"result": "pending", "notes": ""},
+    "listening_and_bypass": {"result": "pending", "notes": ""},
+    "app_volume_and_mute": {"result": "pending", "notes": ""},
+    "output_device_switch": {"result": "pending", "notes": ""},
+    "presets_and_restore": {"result": "pending", "notes": ""},
+    "menu_bar_and_quit": {"result": "pending", "notes": ""},
+    "microphone_monitoring": {"result": "pending", "notes": ""}
+  }
+}

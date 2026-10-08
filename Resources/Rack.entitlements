@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Required for TCC audio capture under the hardened runtime. Core Audio
+	     process taps are gated on the same service as microphone recording. -->
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
+
+	<!-- Rack is deliberately NOT sandboxed. A sandboxed process cannot create
+	     an aggregate device or enumerate the process object list, both of which
+	     Phase 1 and Phase 4 depend on. This rules out Mac App Store
+	     distribution; Developer ID is the intended channel. -->
+</dict>
+</plist>

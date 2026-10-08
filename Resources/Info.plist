@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>Rack</string>
+	<key>CFBundleDisplayName</key>
+	<string>Rack</string>
+	<key>CFBundleExecutable</key>
+	<string>Rack</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>dev.rack.Rack</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.0.1</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.4</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+
+	<!-- Shown in the TCC dialog raised by the first
+	     AudioHardwareCreateProcessTap call. Without this key the process is
+	     killed rather than prompted. -->
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>Rack needs to capture system audio so it can apply the equalizer, balance and per-app volume to everything you play. Audio is processed on this Mac and never recorded, stored or sent anywhere.</string>
+
+	<!-- A distinct TCC service from NSAudioCaptureUsageDescription above: that
+	     one covers tapping other processes' audio, this one covers reading a
+	     physical input device (the mic monitor feature). Required the moment
+	     an aggregate device gains a microphone sub-device, or the process is
+	     killed rather than prompted, the same failure mode AUDIO.md documents
+	     for the missing capture-usage key. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Rack needs microphone access so it can mix your mic into the output for live monitoring. Audio is processed on this Mac and never recorded, stored or sent anywhere.</string>
+
+	<!-- Starts as a regular app. The Menu Bar Only setting changes the
+	     activation policy at runtime. -->
+	<key>LSUIElement</key>
+	<false/>
+</dict>
+</plist>

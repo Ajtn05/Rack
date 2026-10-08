@@ -1,0 +1,12 @@
+.build/
+.swiftpm/
+.DS_Store
+*.xcodeproj
+Package.resolved
+dist/
+.claude/
+*.dSYM/
+*.p12
+*.keychain-db
+__pycache__/
+*.pyc
