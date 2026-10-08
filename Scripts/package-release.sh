@@ -21,13 +21,9 @@ MINIMUM=$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$ROOT/Reso
 printf '%s\n' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || {
     printf 'Bundle version must have the form 0.0.1.\n' >&2; exit 1;
 }
-NOTES="$ROOT/Resources/ReleaseNotes/$VERSION.txt"
-if [ ! -f "$NOTES" ]; then
-    # Older locally prepared previews kept their notes with ignored docs.
-    NOTES="$ROOT/agents/docs/releases/$VERSION.md"
-fi
+NOTES="$ROOT/docs/releases/$VERSION.md"
 [ -f "$NOTES" ] || {
-    printf 'Add Resources/ReleaseNotes/%s.txt before packaging.\n' "$VERSION" >&2; exit 1;
+    printf 'Add docs/releases/%s.md before packaging.\n' "$VERSION" >&2; exit 1;
 }
 
 if [ "$NOTARIZE" -eq 1 ]; then
