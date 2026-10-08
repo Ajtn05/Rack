@@ -114,6 +114,11 @@ incomplete manual checks, or an unnotarized stable build. It uploads the existin
 ZIP, checksum, metadata, build manifest, and manual record without rebuilding.
 Review the GitHub draft and publish when ready. See [RELEASING.md](RELEASING.md).
 
+An explicit user request can omit manual smoke testing for a preview through
+`draft-release CANDIDATE-DIRECTORY --skip-smoke`. The tool records the skip,
+keeps manual checks pending, and retains all archive, automated-evidence, and
+tag checks. Stable releases require the completed manual record.
+
 ## GitHub distribution
 
 Once the repository is created and pushed:

@@ -98,6 +98,12 @@ or replaces the app. Preview releases are explicitly marked as prereleases.
 Review the GitHub draft, then publish it. Add the actual release/download
 link to the product README. Keep the candidate directory as the local record.
 
+When the user explicitly requests a preview release without manual smoke
+testing, use `draft-release CANDIDATE-DIRECTORY --skip-smoke`. This retains all
+archive, automated-evidence, and source-tag checks and uploads a skip record
+bound to the exact archive. Manual checks remain pending. Stable releases
+still require the completed manual record.
+
 ## Prepare candidates through GitHub
 
 Use **Actions → Prepare preview release candidate → Run workflow** and enter

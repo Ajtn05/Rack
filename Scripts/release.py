@@ -338,11 +338,13 @@ def validate_smoke(data, archive_sha):
             raise BuildError(f"Manual check has not passed: {name}.")
 
 
-def validate_candidate(directory):
+def validate_candidate(directory, *, skip_smoke=False):
     directory = Path(directory).resolve()
     manifest = read_json(directory / "manifest.json")
     if manifest.get("schemaVersion") != 1 or manifest.get("kind") != "release-candidate" or manifest.get("status") != "passed":
         raise BuildError("Only a successfully verified release candidate can become a GitHub release.")
+    if skip_smoke and manifest.get("channel") != "preview":
+        raise BuildError("Manual smoke testing can only be skipped for a preview release.")
     source = manifest["source"]
     if not source.get("commit") or source.get("hasChanges"):
         raise BuildError("Release source must be committed and clean.")
@@ -384,12 +386,13 @@ def validate_candidate(directory):
             raise BuildError("Stable releases require automated verification on both Apple silicon and Intel.")
     elif manifest["channel"] != "preview":
         raise BuildError("Unsupported release channel.")
-    validate_smoke(read_json(directory / "manual-smoke.json"), manifest["package"]["sha256"])
+    if not skip_smoke:
+        validate_smoke(read_json(directory / "manual-smoke.json"), manifest["package"]["sha256"])
     return manifest, archive
 
 
-def draft_release(directory, root=ROOT):
-    manifest, archive = validate_candidate(directory)
+def draft_release(directory, root=ROOT, *, skip_smoke=False):
+    manifest, archive = validate_candidate(directory, skip_smoke=skip_smoke)
     tag = f"v{manifest['version']}"
     tagged_commit = git("rev-parse", "--verify", f"{tag}^{{commit}}", root=root).decode().strip()
     if tagged_commit != manifest["source"]["commit"]:
@@ -397,9 +400,24 @@ def draft_release(directory, root=ROOT):
     if remote_tag_commit(tag, root) != manifest["source"]["commit"]:
         raise BuildError("GitHub's release tag points to a different commit than the tested candidate.")
     directory = Path(directory).resolve()
+    manual_record = directory / "manual-smoke.json"
+    if skip_smoke:
+        manual_record = directory / "manual-smoke-skipped.json"
+        if manual_record.exists():
+            record = read_json(manual_record)
+            if record.get("archiveSha256") != manifest["package"]["sha256"] or record.get("status") != "skipped":
+                raise BuildError("Existing manual smoke skip record does not match this candidate.")
+        else:
+            write_json(manual_record, {
+                "schemaVersion": 1, "archiveSha256": manifest["package"]["sha256"],
+                "sourceCommit": manifest["source"]["commit"], "recordedAt": utc_now(),
+                "status": "skipped", "checksRemainPending": True,
+                "reason": "Manual smoke testing omitted at the user's explicit request.",
+            })
+        print("Manual smoke testing skipped by request; manual checks remain pending.", flush=True)
     command = ["gh", "release", "create", tag, str(archive),
                str(directory / "package/SHA256SUMS"), str(directory / "package/release-info.json"),
-               str(directory / "manifest.json"), str(directory / "manual-smoke.json"),
+               str(directory / "manifest.json"), str(manual_record),
                "--verify-tag", "--draft", "--title", f"Rack {manifest['version']}",
                "--notes-file", str(directory / "package/release-notes.md")]
     if manifest["channel"] == "preview":
@@ -485,6 +503,8 @@ def main():
     record.add_argument("--file", type=Path, required=True)
     draft = commands.add_parser("draft-release", help="Upload a tested candidate as a draft GitHub release")
     draft.add_argument("directory", type=Path)
+    draft.add_argument("--skip-smoke", action="store_true",
+                       help="Publish a preview without manual smoke testing when explicitly requested; keep checks pending")
     version = commands.add_parser("version", help="Update the app version and increment its build number")
     version.add_argument("version")
     version.add_argument("--build", type=int, required=True)
@@ -500,7 +520,7 @@ def main():
                 print(f"{item['status']:8} {item['channel']:7} {item['version']:8} {item['id']}  {path.parent}")
             return 0
         if args.command == "draft-release":
-            draft_release(args.directory)
+            draft_release(args.directory, skip_smoke=args.skip_smoke)
             return 0
         with build_lock():
             if args.command == "verify":

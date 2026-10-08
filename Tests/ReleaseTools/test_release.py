@@ -239,6 +239,46 @@ class ReleaseTests(unittest.TestCase):
                 release.draft_release(directory, self.root)
         github.assert_not_called()
 
+    def test_preview_smoke_skip_preserves_archive_and_verification_gates(self):
+        directory, manifest = self.candidate()
+        (directory / "manual-smoke.json").unlink()
+        with self.assertRaises(FileNotFoundError):
+            release.validate_candidate(directory)
+        release.validate_candidate(directory, skip_smoke=True)
+        archive = directory / manifest["package"]["path"]
+        original = archive.read_bytes()
+        archive.write_bytes(b"a changed archive")
+        with self.assertRaisesRegex(release.BuildError, "archive changed"):
+            release.validate_candidate(directory, skip_smoke=True)
+        archive.write_bytes(original)
+        report = directory / manifest["verification"][0]["path"]
+        report.write_text(report.read_text() + " ")
+        with self.assertRaisesRegex(release.BuildError, "report changed"):
+            release.validate_candidate(directory, skip_smoke=True)
+
+    def test_stable_release_cannot_skip_smoke(self):
+        directory, _ = self.candidate("stable")
+        with self.assertRaisesRegex(release.BuildError, "only.*preview"):
+            release.validate_candidate(directory, skip_smoke=True)
+
+    def test_preview_draft_records_skipped_smoke_without_claiming_a_pass(self):
+        directory, manifest = self.candidate()
+        (directory / "manual-smoke.json").unlink()
+        with mock.patch.object(release, "git", return_value=(self.source["commit"] + "\n").encode()), \
+                mock.patch.object(release, "remote_tag_commit", return_value=self.source["commit"]), \
+                mock.patch.object(release.subprocess, "run") as github:
+            release.draft_release(directory, self.root, skip_smoke=True)
+        record = release.read_json(directory / "manual-smoke-skipped.json")
+        self.assertEqual(record["archiveSha256"], manifest["package"]["sha256"])
+        self.assertEqual(record["status"], "skipped")
+        self.assertTrue(record["checksRemainPending"])
+        self.assertFalse((directory / "manual-smoke.json").exists())
+        command = github.call_args.args[0]
+        self.assertIn(str(directory / "manual-smoke-skipped.json"), command)
+        self.assertIn(str(directory / manifest["package"]["path"]), command)
+        self.assertIn("--draft", command)
+        self.assertIn("--prerelease", command)
+
     def test_draft_uploads_existing_archive_without_rebuilding(self):
         directory, manifest = self.candidate()
         with mock.patch.object(release, "git", return_value=(self.source["commit"] + "\n").encode()), \
