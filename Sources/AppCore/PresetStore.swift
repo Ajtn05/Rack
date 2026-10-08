@@ -96,6 +96,11 @@ public final class PresetStore: @unchecked Sendable {
         /// before panels could be rearranged had no order to remember.
         public var panelOrder: [String]?
 
+        /// Visible rack panels. Absent uses the four default components;
+        /// an explicit empty list shows only the mandatory amplifier.
+        /// Raw strings allow unknown panels to be ignored during restoration.
+        public var enabledPanels: [String]?
+
         /// Which panels the user has set to take a full row, as raw
         /// `RackPanelKind` values — same reasoning as `panelOrder`. Optional,
         /// and absent means each panel's own built-in default: a state file
@@ -152,6 +157,7 @@ public final class PresetStore: @unchecked Sendable {
             analyzerMode: String? = nil,
             isIdleTimeoutEnabled: Bool? = nil,
             panelOrder: [String]? = nil,
+            enabledPanels: [String]? = nil,
             fullWidthPanels: [String]? = nil,
             fullHeightPanels: [String]? = nil,
             isMenuBarOnly: Bool? = nil,
@@ -165,6 +171,7 @@ public final class PresetStore: @unchecked Sendable {
             self.analyzerMode = analyzerMode
             self.isIdleTimeoutEnabled = isIdleTimeoutEnabled
             self.panelOrder = panelOrder
+            self.enabledPanels = enabledPanels
             self.fullWidthPanels = fullWidthPanels
             self.fullHeightPanels = fullHeightPanels
             self.isMenuBarOnly = isMenuBarOnly

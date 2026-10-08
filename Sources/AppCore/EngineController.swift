@@ -324,6 +324,29 @@ public final class EngineController {
         didSet { noteInteraction() }
     }
 
+    /// Visibility is a layout preference; hiding a panel never bypasses its DSP.
+    /// Writes go through `setPanelEnabled` so the amplifier cannot be removed.
+    public private(set) var enabledPanels = RackPanelKind.defaultEnabledPanels {
+        didSet { noteInteraction() }
+    }
+
+    public var visiblePanelOrder: [RackPanelKind] {
+        panelOrder.filter { enabledPanels.contains($0) }
+    }
+
+    public func setPanelEnabled(_ kind: RackPanelKind, isEnabled: Bool) {
+        guard kind != .amplifier else { return }
+        if isEnabled {
+            enabledPanels.insert(kind)
+        } else {
+            enabledPanels.remove(kind)
+        }
+    }
+
+    public func resetPanelVisibility() {
+        enabledPanels = RackPanelKind.defaultEnabledPanels
+    }
+
     /// Moves `kind` so it sits immediately before `destination`, for a panel
     /// dropped onto another one. A no-op for a panel dropped onto itself, or
     /// naming a kind that is not (or is no longer) in `panelOrder` — both
@@ -432,6 +455,7 @@ public final class EngineController {
                     analyzerMode: self.analyzerMode.rawValue,
                     isIdleTimeoutEnabled: self.isIdleTimeoutEnabled,
                     panelOrder: self.panelOrder.map(\.rawValue),
+                    enabledPanels: self.enabledPanels.map(\.rawValue),
                     fullWidthPanels: self.fullWidthPanels.map(\.rawValue),
                     fullHeightPanels: self.fullHeightPanels.map(\.rawValue),
                     isMenuBarOnly: self.isMenuBarOnly,
@@ -896,6 +920,10 @@ public final class EngineController {
         analyzerMode = state.analyzerMode.flatMap(AnalyzerMode.init(rawValue:)) ?? .spectrum
         isIdleTimeoutEnabled = state.isIdleTimeoutEnabled ?? true
         panelOrder = Self.restoredPanelOrder(from: state.panelOrder)
+        if let savedEnabled = state.enabledPanels {
+            enabledPanels = Set(savedEnabled.compactMap(RackPanelKind.init(rawValue:)))
+                .union([.amplifier])
+        }
         if let savedFullWidth = state.fullWidthPanels {
             fullWidthPanels = Set(savedFullWidth.compactMap(RackPanelKind.init(rawValue:)))
         }

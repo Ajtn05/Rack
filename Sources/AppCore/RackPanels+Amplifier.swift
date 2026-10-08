@@ -4,6 +4,7 @@ import SwiftUI
 
 struct AmplifierPanel: View {
     let engine: EngineController
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         RackUnit("Amplifier", status: status) {
@@ -11,11 +12,19 @@ struct AmplifierPanel: View {
             // different corners with different styling read as two switches
             // for the same idea. Power runs the engine; whether the EQ is in
             // circuit is a question about the equalizer, and now lives there.
-            SelectorRow(
-                items: [SelectorRow.Item(id: "power", label: "Power")],
-                selection: engine.status.isRunning ? ["power"] : [],
-                mode: .multiple
-            ) { _ in engine.toggle() }
+            HStack(spacing: engine.theme.metrics.controlSpacing) {
+                SelectorRow(
+                    items: [SelectorRow.Item(id: "power", label: "Power")],
+                    selection: engine.status.isRunning ? ["power"] : [],
+                    mode: .multiple
+                ) { _ in engine.toggle() }
+
+                SelectorRow(
+                    items: [SelectorRow.Item(id: "settings", label: "Settings")],
+                    selection: [],
+                    mode: .momentary
+                ) { _ in openSettings() }
+            }
         } content: {
             // Two rows of controls in a primary Grid — volume, balance,
             // preamp, tone and boost, each with its own readout — and a

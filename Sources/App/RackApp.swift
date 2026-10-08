@@ -46,6 +46,10 @@ struct RackApp: App {
         // minimum against a user drag, so this asks for that explicitly.
         .windowResizability(.contentSize)
 
+        Settings {
+            SettingsScreen(engine: engine)
+        }
+
         // The primary surface for an always-on utility. Rack processes every
         // sound the Mac makes whether or not a window is open, so the window
         // being the only way to reach it was the wrong shape: closing it used

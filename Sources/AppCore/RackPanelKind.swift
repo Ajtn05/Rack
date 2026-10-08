@@ -22,16 +22,39 @@ public enum RackPanelKind: String, CaseIterable, Hashable, Sendable {
     case diagnostics
     case appearance
 
+    /// The names used in Settings match the titles on the rack.
+    public var displayName: String {
+        switch self {
+        case .amplifier: "Amplifier"
+        case .saturation: "Saturation"
+        case .compressor: "Compressor"
+        case .soundFieldProcessor: "Sound Field Processor"
+        case .limiter: "Limiter"
+        case .input: "Input"
+        case .output: "Output"
+        case .analyzer: "Analyzer"
+        case .equalizer: "Equalizer"
+        case .applications: "Applications"
+        case .presets: "Presets"
+        case .diagnostics: "Diagnostics"
+        case .appearance: "Appearance"
+        }
+    }
+
+    public static let defaultEnabledPanels: Set<RackPanelKind> = [
+        .amplifier, .analyzer, .equalizer, .soundFieldProcessor
+    ]
+
     /// The rack's own order — what a fresh install shows, and what a saved
     /// order falls back to for any kind it does not name (an older save file,
     /// or a kind that did not exist yet when it was written).
     public static let defaultOrder: [RackPanelKind] = [
-        .amplifier, .saturation, .compressor, .soundFieldProcessor, .limiter,
+        .amplifier, .analyzer, .equalizer, .soundFieldProcessor,
+        .saturation, .compressor, .limiter,
         // Input sits immediately before Output: the two are the same kind of
         // question — where sound comes from, where it goes — and reading them
         // in signal order is how the back of an amplifier is labelled.
-        .input, .output, .analyzer,
-        .equalizer, .applications, .presets, .diagnostics, .appearance
+        .input, .output, .applications, .presets, .diagnostics, .appearance
     ]
 
     /// Whether this panel takes a full row by default, before the user has

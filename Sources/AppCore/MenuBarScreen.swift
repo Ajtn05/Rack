@@ -45,6 +45,10 @@ public struct MenuBarScreen: View {
         }
         .keyboardShortcut("r", modifiers: [.option, .command])
 
+        SettingsLink {
+            Text("Settings…")
+        }
+
         Divider()
 
         Toggle("Open at Login", isOn: loginBinding)

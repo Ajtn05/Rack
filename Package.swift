@@ -49,10 +49,7 @@ let package = Package(
         .target(name: "RackRealtime"),
 
         // Theme protocol, tokens, skinned components. Must never import AudioCore.
-        .target(
-            name: "DesignSystem",
-            exclude: ["Themes/README.md"]
-        ),
+        .target(name: "DesignSystem"),
 
         .plugin(name: "BoundaryCheckPlugin", capability: .buildTool()),
         .plugin(name: "TestRegistrationCheckPlugin", capability: .buildTool()),

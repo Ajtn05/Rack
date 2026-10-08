@@ -10,7 +10,7 @@ import SwiftUI
 ///
 /// The panels themselves live in `RackPanels.swift`, one `View` type each,
 /// rather than as computed properties here — see that file's header comment
-/// for why: this struct's own `body` only ever reads `engine.theme`, so it
+/// for why: this struct's own `body` reads theme and layout state, so it
 /// stays idle while the amplifier runs and the meters and diagnostics tick
 /// thirty times a second in their own panels instead of dragging this one
 /// (and everything else on the rack) along with them.
@@ -130,7 +130,14 @@ public struct RackScreen: View {
     /// header chrome, the same way `measuredAmplifierWidth` includes
     /// `AmplifierPanel`'s own; the `content:` closure is a zero-size
     /// placeholder since the header's width does not depend on it.
+    @ViewBuilder
     private var analyzerHeaderMeasurementLayer: some View {
+        if engine.enabledPanels.contains(.analyzer) {
+            analyzerHeaderMeasurement
+        }
+    }
+
+    private var analyzerHeaderMeasurement: some View {
         RackUnit("Analyzer", status: engine.isDisplayIdle ? "IDLE" : nil) {
             AnalyzerModeSelector(engine: engine)
         } content: {
@@ -149,7 +156,7 @@ public struct RackScreen: View {
     private var rack: some View {
         ScrollView {
             RackTileLayout(spacing: engine.theme.metrics.panelSpacing) {
-                ForEach(engine.panelOrder, id: \.self) { kind in
+                ForEach(engine.visiblePanelOrder, id: \.self) { kind in
                     panelView(for: kind)
                         .layoutValue(
                             key: RackTileLayout.IsFullWidthKey.self,
@@ -329,11 +336,12 @@ public struct RackScreen: View {
         // padding and bevel), unlike the formula, which is why each is
         // compared directly against the fully assembled floor rather than
         // folded into `tileContentMinimumWidth` below.
-        let formulaFloor = RackPanelKind.allCases
+        let formulaFloor = engine.visiblePanelOrder
             .map(tileContentMinimumWidth(for:))
             .max() ?? 0
         let restatedWidth = formulaFloor + engine.theme.metrics.panelPadding * 4 + cheekAllowance
-        let measuredWidth = max(measuredAmplifierWidth, measuredAnalyzerHeaderWidth)
+        let analyzerWidth = engine.enabledPanels.contains(.analyzer) ? measuredAnalyzerHeaderWidth : 0
+        let measuredWidth = max(measuredAmplifierWidth, analyzerWidth)
         guard measuredWidth > 0 else { return restatedWidth }
         return max(measuredWidth + cheekAllowance, restatedWidth)
     }
