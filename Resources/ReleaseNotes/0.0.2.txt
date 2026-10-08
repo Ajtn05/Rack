@@ -1,0 +1,46 @@
+# Rack 0.0.2 — Configurable UI Components (Preview)
+
+Choose which components appear in your rack from **Settings → UI Components**.
+Open Settings with **⌘,**, the amplifier's Settings control, or the menu bar.
+
+## Changes
+
+- Amplifier, Analyzer, Equalizer, and Sound Field Processor appear by default.
+- Show or hide any optional component; the amplifier always stays visible.
+- Component visibility is remembered across relaunches. Hidden components keep
+  their audio settings, rack positions, and size preferences.
+- Restore Default Components returns to the four default components.
+- Intel compilation and headless CI theme checks have been corrected.
+
+The preview includes Rack's ten-band EQ, tone controls, saturation, compressor,
+limiter, reverb, echo, stereo width, headphone crossfeed, per-app mixing,
+analyzers, presets, and thirteen themes. Enable additional panels in Settings
+to access their controls.
+
+## Install
+
+Requires **macOS 14.4 or later**. The universal archive contains native
+**Apple silicon (`arm64`) and Intel (`x86_64`)** executables.
+
+1. Download `Rack-0.0.2-macOS-universal-preview.zip` and extract it.
+2. Move `Rack.app` to Applications and open it.
+3. Grant system audio capture permission when prompted.
+
+This preview is **ad-hoc signed and not notarized**. macOS Gatekeeper may
+block downloaded copies. If you trust the build, use **Open Anyway** in
+**System Settings → Privacy & Security**. Microphone permission is needed
+only for optional microphone monitoring.
+
+Audio is processed on your Mac and is never recorded, stored, or uploaded.
+
+## Validation
+
+The organized build workflow checks debug and optimized audio/model tests,
+module boundaries, test registration, theme contrast and rendering, universal
+binary architecture, code signature, release entitlements, ZIP integrity,
+and the SHA-256 checksum. Reports and screenshots are retained with the build.
+
+The Intel executable is cross-compiled. Actual listening, permissions,
+per-app routing, physical output-device changes, presets, menu-bar behavior,
+and microphone monitoring must be recorded against the exact candidate archive.
+These manual checks remain pending; automated results do not imply a manual pass.
